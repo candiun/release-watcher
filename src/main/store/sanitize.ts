@@ -1,7 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { CURRENT_SCHEMA_VERSION, TWO_HOURS_MS } from '../constants';
 import { createOpenAICodexSource, defaultSources, defaultStore } from './defaults';
-import type { AppSettings, SourceInput, SourceRecord, SourceType, SourceView, StoreData } from '../../shared/types';
+import type {
+  AppSettings,
+  SourceInput,
+  SourceRecord,
+  SourceType,
+  SourceView,
+  StoreData,
+} from '../../shared/types';
 
 export function sanitizeAutoPollMinutes(value: unknown): number {
   const numeric = Number(value);
@@ -34,12 +41,16 @@ function normalizeType(type: unknown): SourceType | null {
   return null;
 }
 
+type LegacySourceShape = Partial<SourceRecord> & {
+  jsonPath?: string;
+};
+
 export function sanitizeSource(input: unknown, isNew: boolean): SourceRecord | null {
   if (!input || typeof input !== 'object') {
     return null;
   }
 
-  const raw = input as Partial<SourceRecord>;
+  const raw = input as LegacySourceShape;
   const type = normalizeType(raw.type);
   if (!type) {
     return null;
@@ -64,7 +75,11 @@ export function sanitizeSource(input: unknown, isNew: boolean): SourceRecord | n
     name,
     url,
     type,
-    jsonPath: type === 'json' ? String(raw.jsonPath || '').trim() : '',
+    outputSelector:
+      type === 'json'
+        ? String(raw.outputSelector || raw.jsonPath || '').trim()
+        : String(raw.outputSelector || '').trim(),
+    requestHeaders: String(raw.requestHeaders || '').trim(),
     selector: type === 'html' ? String(raw.selector || '').trim() : '',
     attribute: type === 'html' ? String(raw.attribute || '').trim() : '',
     regex: String(raw.regex || '').trim(),
@@ -72,11 +87,12 @@ export function sanitizeSource(input: unknown, isNew: boolean): SourceRecord | n
     createdAt: isNew ? now : raw.createdAt || now,
     updatedAt: now,
     lastValue: !isNew ? (raw.lastValue ?? null) : null,
+    lastFingerprint: !isNew ? (raw.lastFingerprint ?? null) : null,
     lastPolledAt: !isNew ? (raw.lastPolledAt ?? null) : null,
     lastChangeAt: !isNew ? (raw.lastChangeAt ?? null) : null,
     lastChangeType: !isNew ? (raw.lastChangeType ?? null) : null,
     lastStatus: !isNew ? (raw.lastStatus ?? 'never') : 'never',
-    lastError: !isNew ? (raw.lastError ?? null) : null
+    lastError: !isNew ? (raw.lastError ?? null) : null,
   };
 }
 
@@ -93,7 +109,7 @@ export function sanitizeStore(parsed: unknown): StoreData {
     autoPollEnabled:
       typeof settingsRaw.autoPollEnabled === 'boolean' ? settingsRaw.autoPollEnabled : true,
     autoPollMinutes: sanitizeAutoPollMinutes(settingsRaw.autoPollMinutes),
-    unseenUpdateCount: sanitizeUnseenUpdateCount(settingsRaw.unseenUpdateCount)
+    unseenUpdateCount: sanitizeUnseenUpdateCount(settingsRaw.unseenUpdateCount),
   };
 
   const sources = Array.isArray(raw.sources)
@@ -102,13 +118,13 @@ export function sanitizeStore(parsed: unknown): StoreData {
 
   return {
     settings,
-    sources: sources.length > 0 ? (sources as SourceRecord[]) : defaultSources()
+    sources: sources.length > 0 ? (sources as SourceRecord[]) : defaultSources(),
   };
 }
 
 export function migrateStoreIfNeeded(store: StoreData): boolean {
   let changed = false;
-  const currentVersion = sanitizeSchemaVersion(store.settings?.schemaVersion);
+  const currentVersion = sanitizeSchemaVersion(store.settings.schemaVersion);
 
   if (currentVersion < 2) {
     const now = new Date().toISOString();
@@ -140,6 +156,26 @@ export function migrateStoreIfNeeded(store: StoreData): boolean {
     }
   }
 
+  if (currentVersion < 4) {
+    for (const source of store.sources) {
+      const nextOutputSelector = String(source.outputSelector || '').trim();
+      if (source.type === 'json' && source.outputSelector !== nextOutputSelector) {
+        source.outputSelector = nextOutputSelector;
+        changed = true;
+      }
+
+      if (source.requestHeaders !== String(source.requestHeaders || '').trim()) {
+        source.requestHeaders = String(source.requestHeaders || '').trim();
+        changed = true;
+      }
+
+      if (source.lastFingerprint !== null) {
+        source.lastFingerprint = String(source.lastFingerprint);
+        changed = true;
+      }
+    }
+  }
+
   if (store.settings.schemaVersion !== CURRENT_SCHEMA_VERSION) {
     store.settings.schemaVersion = CURRENT_SCHEMA_VERSION;
     changed = true;
@@ -156,7 +192,7 @@ export function sourceWithComputedFlags(source: SourceRecord): SourceView {
 
   return {
     ...source,
-    isNew
+    isNew,
   };
 }
 
@@ -164,11 +200,12 @@ export function resetSourceRuntimeFields(source: SourceRecord): SourceRecord {
   return {
     ...source,
     lastValue: null,
+    lastFingerprint: null,
     lastPolledAt: null,
     lastChangeAt: null,
     lastChangeType: null,
     lastStatus: 'never',
-    lastError: null
+    lastError: null,
   };
 }
 
@@ -176,7 +213,7 @@ export function mergeSourceInput(existing: SourceRecord, input: SourceInput): So
   const merged: SourceRecord = {
     ...existing,
     ...input,
-    id: existing.id
+    id: existing.id,
   };
 
   const sanitized = sanitizeSource(merged, false);
@@ -187,7 +224,8 @@ export function mergeSourceInput(existing: SourceRecord, input: SourceInput): So
   const parsingConfigChanged =
     existing.url !== sanitized.url ||
     existing.type !== sanitized.type ||
-    existing.jsonPath !== sanitized.jsonPath ||
+    existing.outputSelector !== sanitized.outputSelector ||
+    existing.requestHeaders !== sanitized.requestHeaders ||
     existing.selector !== sanitized.selector ||
     existing.attribute !== sanitized.attribute ||
     existing.regex !== sanitized.regex;

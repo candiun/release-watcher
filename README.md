@@ -8,10 +8,14 @@ TypeScript-first architecture with separated main/preload/renderer modules.
 
 - GUI source management: create, edit, delete monitoring sources.
 - Source types:
-  - `json` with dot/bracket path selectors (example: `0.name`, `releases[0].version`).
+  - `json` with output selectors (example: `0.name`, `.data[].id`, `releases[0].version`).
   - `html` with CSS selectors and optional attribute extraction.
+- Optional per-source request headers (curl-style API polling use case).
 - Optional regex extraction for both source types.
 - Local persistence of latest known values and poll history.
+- Diffing via fingerprint:
+  - string/number outputs compare by normalized value,
+  - non-string/number outputs compare by SHA-256 hash.
 - "New" badge logic: only shown for updates detected within the last 2 hours.
 - Per-source poll and global "Poll All".
 - Native system notifications when a source value changes.
@@ -36,6 +40,28 @@ Production run (local):
 
 ```bash
 npm start
+```
+
+## Developer workflow
+
+```bash
+# strict type-check only
+npm run typecheck
+
+# lint with strict TS-aware rules
+npm run lint
+
+# auto-fix lint issues
+npm run lint:fix
+
+# format
+npm run format
+```
+
+Watch mode (auto-recompile + restart Electron on changes):
+
+```bash
+npm run dev:watch
 ```
 
 ## Build for macOS (`/Applications`)

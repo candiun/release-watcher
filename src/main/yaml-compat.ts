@@ -5,7 +5,6 @@ let parseYaml: YamlParser;
 let stringifyYaml: YamlStringifier;
 
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const YAML = require('yaml') as {
     parse: (text: string) => unknown;
     stringify: (value: unknown) => string;

@@ -16,6 +16,7 @@ export interface Elements {
   cancelSourceBtn: HTMLButtonElement;
   sourceName: HTMLInputElement;
   sourceUrl: HTMLInputElement;
+  sourceRequestHeaders: HTMLTextAreaElement;
   sourceType: HTMLSelectElement;
   jsonPathWrap: HTMLLabelElement;
   selectorWrap: HTMLLabelElement;
@@ -42,6 +43,7 @@ export function collectElements(): Elements {
     cancelSourceBtn: requireElement('#cancel-source-btn', HTMLButtonElement),
     sourceName: requireElement('#source-name', HTMLInputElement),
     sourceUrl: requireElement('#source-url', HTMLInputElement),
+    sourceRequestHeaders: requireElement('#source-request-headers', HTMLTextAreaElement),
     sourceType: requireElement('#source-type', HTMLSelectElement),
     jsonPathWrap: requireElement('#json-path-wrap', HTMLLabelElement),
     selectorWrap: requireElement('#selector-wrap', HTMLLabelElement),
@@ -54,6 +56,6 @@ export function collectElements(): Elements {
     autoPollEnabled: requireElement('#auto-poll-enabled', HTMLInputElement),
     autoPollMinutes: requireElement('#auto-poll-minutes', HTMLInputElement),
     saveSettingsBtn: requireElement('#save-settings-btn', HTMLButtonElement),
-    toast: requireElement('#toast', HTMLDivElement)
+    toast: requireElement('#toast', HTMLDivElement),
   };
 }

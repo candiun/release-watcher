@@ -15,6 +15,13 @@ let windowService: WindowService;
 let pollingService: PollingService;
 let trayService: TrayService;
 
+function isAppActive(): boolean {
+  const mainWindow = windowService.getWindow();
+  return Boolean(
+    mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()
+  );
+}
+
 function currentUnseenUpdateCount(): number {
   const store = storeService.getSnapshot();
   const count = sanitizeUnseenUpdateCount(store.settings.unseenUpdateCount);
@@ -23,9 +30,7 @@ function currentUnseenUpdateCount(): number {
 }
 
 function onStoreMutated(): void {
-  if (trayService) {
-    trayService.updateIndicator();
-  }
+  trayService.updateIndicator();
 }
 
 function markUnseenUpdate(): void {
@@ -60,15 +65,18 @@ function scheduleAutoPoll(): void {
     return;
   }
 
-  autoPollTimer = setInterval(() => {
-    pollingService
-      .withPollLock(async () => {
-        await pollingService.pollAllSources();
-      })
-      .catch((error) => {
-        console.error('Auto-poll failed:', error);
-      });
-  }, autoPollMinutes * 60 * 1000);
+  autoPollTimer = setInterval(
+    () => {
+      pollingService
+        .withPollLock(async () => {
+          await pollingService.pollAllSources();
+        })
+        .catch((error) => {
+          console.error('Auto-poll failed:', error);
+        });
+    },
+    autoPollMinutes * 60 * 1000
+  );
 }
 
 async function pollAllFromTray(): Promise<void> {
@@ -79,52 +87,59 @@ async function pollAllFromTray(): Promise<void> {
 
 function initializeServices(): void {
   windowService = new WindowService({
+    appRef: app,
     onWindowVisible: clearUnseenUpdates,
-    shouldHideOnClose: () => process.platform === 'darwin' && !isQuitting
+    shouldHideOnClose: () => process.platform === 'darwin' && !isQuitting,
   });
 
   pollingService = new PollingService({
     storeService,
-    isMainWindowVisible: () => windowService.isVisible(),
+    isAppActive,
     markUnseenUpdate,
-    onStoreMutated
+    onStoreMutated,
   });
 
   trayService = new TrayService({
     appRef: app,
     getUnseenCount: currentUnseenUpdateCount,
+    isAppActive,
     showMainWindow: () => windowService.showMainWindow(),
     pollAll: pollAllFromTray,
     onQuit: () => {
       isQuitting = true;
       app.quit();
-    }
+    },
   });
 
   registerIpcHandlers({
     storeService,
     pollingService,
     onSettingsChanged: scheduleAutoPoll,
-    onStoreMutated
+    onStoreMutated,
   });
 }
 
-app.whenReady().then(async () => {
-  await storeService.load();
-  initializeServices();
+void app
+  .whenReady()
+  .then(async () => {
+    await storeService.load();
+    initializeServices();
 
-  trayService.createTray();
-  scheduleAutoPoll();
+    trayService.createTray();
+    scheduleAutoPoll();
 
-  await windowService.createWindow();
-  trayService.updateIndicator();
+    await windowService.createWindow();
+    trayService.updateIndicator();
 
-  app.on('activate', () => {
-    windowService.showMainWindow().catch((error) => {
-      console.error('Failed to show window:', error);
+    app.on('activate', () => {
+      windowService.showMainWindow().catch((error) => {
+        console.error('Failed to show window:', error);
+      });
     });
+  })
+  .catch((error) => {
+    console.error('Failed to initialize app:', error);
   });
-});
 
 app.on('before-quit', () => {
   isQuitting = true;

@@ -9,7 +9,8 @@ export interface SourceRecord {
   name: string;
   url: string;
   type: SourceType;
-  jsonPath: string;
+  outputSelector: string;
+  requestHeaders: string;
   selector: string;
   attribute: string;
   regex: string;
@@ -17,6 +18,7 @@ export interface SourceRecord {
   createdAt: string;
   updatedAt: string;
   lastValue: string | null;
+  lastFingerprint: string | null;
   lastPolledAt: string | null;
   lastChangeAt: string | null;
   lastChangeType: SourceChangeType;
@@ -45,7 +47,8 @@ export interface SourceInput {
   name: string;
   url: string;
   type: SourceType;
-  jsonPath?: string;
+  outputSelector?: string;
+  requestHeaders?: string;
   selector?: string;
   attribute?: string;
   regex?: string;

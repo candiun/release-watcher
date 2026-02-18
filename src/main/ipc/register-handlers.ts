@@ -3,7 +3,7 @@ import {
   mergeSourceInput,
   sanitizeAutoPollMinutes,
   sanitizeSource,
-  sourceWithComputedFlags
+  sourceWithComputedFlags,
 } from '../store/sanitize';
 import type { PollingService } from '../services/polling-service';
 import type { StoreService } from '../store/store-service';
@@ -32,11 +32,11 @@ export function registerIpcHandlers(options: RegisterHandlersOptions): void {
   ipcMain.handle('settings:update', async (_event, partialSettings: SettingsUpdate) => {
     const store = await storeService.load();
 
-    if (typeof partialSettings?.autoPollEnabled === 'boolean') {
+    if (typeof partialSettings.autoPollEnabled === 'boolean') {
       store.settings.autoPollEnabled = partialSettings.autoPollEnabled;
     }
 
-    if (partialSettings?.autoPollMinutes !== undefined) {
+    if (partialSettings.autoPollMinutes !== undefined) {
       store.settings.autoPollMinutes = sanitizeAutoPollMinutes(partialSettings.autoPollMinutes);
     }
 
@@ -49,10 +49,13 @@ export function registerIpcHandlers(options: RegisterHandlersOptions): void {
 
   ipcMain.handle('source:save', async (_event, sourceInput: SourceInput) => {
     const store = await storeService.load();
-    const existingIndex = store.sources.findIndex((item) => item.id === sourceInput?.id);
+    const existingIndex = store.sources.findIndex((item) => item.id === sourceInput.id);
 
     if (existingIndex >= 0) {
       const existing = store.sources[existingIndex];
+      if (!existing) {
+        throw new Error('Source not found.');
+      }
       const merged = mergeSourceInput(existing, sourceInput);
       if (!merged) {
         throw new Error('Invalid source data.');

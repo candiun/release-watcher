@@ -1,17 +1,20 @@
 import path from 'node:path';
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, type App } from 'electron';
 
 interface WindowServiceOptions {
+  appRef: App;
   onWindowVisible: () => Promise<void>;
   shouldHideOnClose: () => boolean;
 }
 
 export class WindowService {
+  private readonly appRef: App;
   private mainWindow: BrowserWindow | null = null;
   private readonly onWindowVisible: () => Promise<void>;
   private readonly shouldHideOnClose: () => boolean;
 
   constructor(options: WindowServiceOptions) {
+    this.appRef = options.appRef;
     this.onWindowVisible = options.onWindowVisible;
     this.shouldHideOnClose = options.shouldHideOnClose;
   }
@@ -21,7 +24,9 @@ export class WindowService {
   }
 
   isVisible(): boolean {
-    return Boolean(this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.isVisible());
+    return Boolean(
+      this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.isVisible()
+    );
   }
 
   async createWindow(): Promise<BrowserWindow> {
@@ -34,8 +39,8 @@ export class WindowService {
       webPreferences: {
         preload: path.join(__dirname, '..', '..', 'preload', 'index.js'),
         contextIsolation: true,
-        nodeIntegration: false
-      }
+        nodeIntegration: false,
+      },
     });
 
     if (process.platform === 'darwin') {
@@ -43,6 +48,7 @@ export class WindowService {
         if (this.shouldHideOnClose()) {
           event.preventDefault();
           this.mainWindow?.hide();
+          this.appRef.dock?.hide();
         }
       });
     }
@@ -81,6 +87,7 @@ export class WindowService {
       this.mainWindow.restore();
     }
 
+    await this.appRef.dock?.show();
     this.mainWindow.show();
     this.mainWindow.focus();
 

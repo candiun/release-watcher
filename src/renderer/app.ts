@@ -1,6 +1,6 @@
 import type { AppSettings, SourceInput, SourceView } from '../shared/types';
-import { collectElements, type Elements } from './dom';
-import { escapeHtml, formatDate, sortSourcesByNewVersionDesc } from './format';
+import { collectElements, type Elements } from './dom.js';
+import { escapeHtml, formatDate, sortSourcesByNewVersionDesc } from './format.js';
 
 interface RendererState {
   sources: SourceView[];
@@ -22,9 +22,9 @@ export class RendererApp {
         schemaVersion: 3,
         autoPollEnabled: true,
         autoPollMinutes: 30,
-        unseenUpdateCount: 0
+        unseenUpdateCount: 0,
       },
-      editingId: null
+      editingId: null,
     };
   }
 
@@ -56,7 +56,7 @@ export class RendererApp {
     this.elements.selectorWrap.style.display = isHtml ? 'grid' : 'none';
     this.elements.attributeWrap.style.display = isHtml ? 'grid' : 'none';
 
-    this.elements.sourceJsonPath.required = isJson;
+    this.elements.sourceJsonPath.required = false;
     this.elements.sourceSelector.required = isHtml;
   }
 
@@ -116,8 +116,9 @@ export class RendererApp {
 
     this.elements.sourceName.value = source?.name || '';
     this.elements.sourceUrl.value = source?.url || '';
+    this.elements.sourceRequestHeaders.value = source?.requestHeaders || '';
     this.elements.sourceType.value = source?.type || 'json';
-    this.elements.sourceJsonPath.value = source?.jsonPath || '';
+    this.elements.sourceJsonPath.value = source?.outputSelector || '';
     this.elements.sourceSelector.value = source?.selector || '';
     this.elements.sourceAttribute.value = source?.attribute || '';
     this.elements.sourceRegex.value = source?.regex || '';
@@ -160,11 +161,12 @@ export class RendererApp {
       name: this.elements.sourceName.value.trim(),
       url: this.elements.sourceUrl.value.trim(),
       type: this.elements.sourceType.value as SourceInput['type'],
-      jsonPath: this.elements.sourceJsonPath.value.trim(),
+      outputSelector: this.elements.sourceJsonPath.value.trim(),
+      requestHeaders: this.elements.sourceRequestHeaders.value.trim(),
       selector: this.elements.sourceSelector.value.trim(),
       attribute: this.elements.sourceAttribute.value.trim(),
       regex: this.elements.sourceRegex.value.trim(),
-      notes: this.elements.sourceNotes.value.trim()
+      notes: this.elements.sourceNotes.value.trim(),
     };
 
     if (!source.name || !source.url) {
@@ -230,7 +232,7 @@ export class RendererApp {
     try {
       this.state.settings = await this.api.updateSettings({
         autoPollEnabled: this.elements.autoPollEnabled.checked,
-        autoPollMinutes: Number(this.elements.autoPollMinutes.value)
+        autoPollMinutes: Number(this.elements.autoPollMinutes.value),
       });
 
       this.elements.autoPollEnabled.checked = this.state.settings.autoPollEnabled;
@@ -247,17 +249,17 @@ export class RendererApp {
     this.elements.cancelSourceBtn.addEventListener('click', () => this.elements.dialog.close());
     this.elements.sourceType.addEventListener('change', () => this.updateTypeDependentFields());
 
-    this.elements.form.addEventListener('submit', async (event) => {
+    this.elements.form.addEventListener('submit', (event) => {
       event.preventDefault();
-      await this.saveSourceFromForm();
+      void this.saveSourceFromForm();
     });
 
-    this.elements.pollAllBtn.addEventListener('click', async () => {
-      await this.pollAllSources();
+    this.elements.pollAllBtn.addEventListener('click', () => {
+      void this.pollAllSources();
     });
 
-    this.elements.saveSettingsBtn.addEventListener('click', async () => {
-      await this.saveSettings();
+    this.elements.saveSettingsBtn.addEventListener('click', () => {
+      void this.saveSettings();
     });
 
     this.elements.tbody.addEventListener('click', (event) => {

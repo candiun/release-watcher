@@ -1,4 +1,4 @@
-import { RendererApp } from './app';
+import { RendererApp } from './app.js';
 
 async function bootstrap(): Promise<void> {
   const app = new RendererApp();

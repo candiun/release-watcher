@@ -16,57 +16,6 @@ function compileRegex(expression: string): RegExp | null {
   return new RegExp(expression, 'im');
 }
 
-function pathTokens(pathExpression: string): Array<string | number> {
-  const trimmed = String(pathExpression || '').trim();
-  if (!trimmed) {
-    return [];
-  }
-
-  const tokens: Array<string | number> = [];
-  const matcher = /\[(\d+|".*?"|'.*?')\]|[^.[\]]+/g;
-
-  for (const match of trimmed.matchAll(matcher)) {
-    const raw = match[0];
-    if (raw.startsWith('[')) {
-      const inner = raw.slice(1, -1);
-      if (/^\d+$/.test(inner)) {
-        tokens.push(Number(inner));
-      } else {
-        tokens.push(inner.slice(1, -1));
-      }
-    } else {
-      tokens.push(raw);
-    }
-  }
-
-  return tokens;
-}
-
-function readByPath(input: unknown, pathExpression: string): unknown {
-  const tokens = pathTokens(pathExpression);
-  let current: unknown = input;
-
-  for (const token of tokens) {
-    if (current === null || current === undefined) {
-      return undefined;
-    }
-
-    if (typeof token === 'number' && Array.isArray(current)) {
-      current = current[token];
-      continue;
-    }
-
-    if (typeof current === 'object' && current !== null) {
-      current = (current as Record<string, unknown>)[String(token)];
-      continue;
-    }
-
-    return undefined;
-  }
-
-  return current;
-}
-
 function normalizeExtractedValue(value: unknown): string {
   if (value === null || value === undefined) {
     return '';
@@ -97,7 +46,97 @@ function applyRegexIfNeeded(rawValue: string, regexExpression: string): string {
   return match[1] ?? match[0];
 }
 
-function extractFromJson(textBody: string, source: SourceRecord): string {
+function getChildValue(parent: unknown, key: string): unknown {
+  if (parent === null || parent === undefined) {
+    return undefined;
+  }
+
+  if (Array.isArray(parent) && /^\d+$/.test(key)) {
+    return parent[Number(key)];
+  }
+
+  if (typeof parent === 'object') {
+    return (parent as Record<string, unknown>)[key];
+  }
+
+  return undefined;
+}
+
+// Supports jq-like selectors such as `.data[].id` and simple dot/index paths like `0.name`.
+function selectJsonValue(input: unknown, selectorExpression: string): unknown {
+  const trimmed = selectorExpression.trim();
+  if (!trimmed) {
+    return input;
+  }
+
+  const normalized = trimmed.startsWith('.') ? trimmed.slice(1) : trimmed;
+  if (!normalized) {
+    return input;
+  }
+
+  const segments = normalized
+    .split('.')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  let current: unknown[] = [input];
+
+  for (const segment of segments) {
+    const wildcardMatch = /^(.*)\[\]$/.exec(segment);
+    const indexedMatch = /^(.*)\[(\d+)\]$/.exec(segment);
+
+    const next: unknown[] = [];
+
+    if (wildcardMatch) {
+      const key = wildcardMatch[1];
+      for (const value of current) {
+        const target = key ? getChildValue(value, key) : value;
+        if (Array.isArray(target)) {
+          for (const item of target as unknown[]) {
+            next.push(item);
+          }
+        }
+      }
+      current = next;
+      continue;
+    }
+
+    if (indexedMatch) {
+      const key = indexedMatch[1];
+      const index = Number(indexedMatch[2]);
+
+      for (const value of current) {
+        const target = key ? getChildValue(value, key) : value;
+        if (Array.isArray(target)) {
+          const item = (target as unknown[])[index];
+          if (item !== undefined) {
+            next.push(item);
+          }
+        }
+      }
+
+      current = next;
+      continue;
+    }
+
+    for (const value of current) {
+      const item = getChildValue(value, segment);
+      if (item !== undefined) {
+        next.push(item);
+      }
+    }
+
+    current = next;
+  }
+
+  if (current.length === 0) {
+    return undefined;
+  }
+
+  return current.length === 1 ? current[0] : current;
+}
+
+function extractFromJson(textBody: string, source: SourceRecord): unknown {
   let parsed: unknown;
 
   try {
@@ -106,9 +145,13 @@ function extractFromJson(textBody: string, source: SourceRecord): string {
     throw new Error('Response was not valid JSON.');
   }
 
-  const selected = source.jsonPath ? readByPath(parsed, source.jsonPath) : parsed;
+  const selected = selectJsonValue(parsed, source.outputSelector);
   if (selected === undefined) {
-    throw new Error(`JSON path did not resolve any value: ${source.jsonPath}`);
+    throw new Error(`Selector did not resolve any value: ${source.outputSelector}`);
+  }
+
+  if (!source.regex) {
+    return selected;
   }
 
   const normalized = normalizeExtractedValue(selected);
@@ -120,7 +163,7 @@ function extractFromHtml(textBody: string, source: SourceRecord): string {
   const selector = source.selector || 'body';
   const element = $(selector).first();
 
-  if (!element || element.length === 0) {
+  if (element.length === 0) {
     throw new Error(`Selector did not match any element: ${selector}`);
   }
 
@@ -133,6 +176,8 @@ function extractFromHtml(textBody: string, source: SourceRecord): string {
   return normalizeExtractedValue(applyRegexIfNeeded(normalized, source.regex));
 }
 
-export function extractSourceValue(textBody: string, source: SourceRecord): string {
-  return source.type === 'json' ? extractFromJson(textBody, source) : extractFromHtml(textBody, source);
+export function extractSourceValue(textBody: string, source: SourceRecord): unknown {
+  return source.type === 'json'
+    ? extractFromJson(textBody, source)
+    : extractFromHtml(textBody, source);
 }
