@@ -1,125 +1,116 @@
-# Release Watcher (Electron)
+# Release Watcher
 
-A desktop GUI app for monitoring app/version release sources from JSON or HTML pages.
+Release Watcher is a small Electron desktop app that tracks version changes across web sources.
 
-TypeScript-first architecture with separated main/preload/renderer modules.
+It supports JSON APIs and HTML changelog pages, remembers what was seen last time, and shows notifications when something new appears.
 
-## Features
+## What it does
 
-- GUI source management: create, edit, delete monitoring sources.
-- Source types:
-  - `json` with output selectors (example: `0.name`, `.data[].id`, `releases[0].version`).
-  - `html` with CSS selectors and optional attribute extraction.
-- Optional per-source request headers (curl-style API polling use case).
-- Optional regex extraction for both source types.
-- Local persistence of latest known values and poll history.
-- Diffing via fingerprint:
-  - string/number outputs compare by normalized value,
-  - non-string/number outputs compare by SHA-256 hash.
-- "New" badge logic: only shown for updates detected within the last 2 hours.
-- Per-source poll and global "Poll All".
-- Native system notifications when a source value changes.
-- Auto-poll scheduler (configurable in UI, default every 30 minutes).
+- Add, edit, and delete watched sources from the UI.
+- Poll JSON or HTML endpoints.
+- Use selectors to pick the value you care about:
+  - JSON examples: `0.name`, `.data[].id`, `releases[0].version`
+  - HTML: CSS selector + optional attribute
+- Optionally apply regex extraction after selector output.
+- Send custom request headers per source (useful for authenticated APIs).
+- Store latest known values locally.
+- Detect changes with value comparison (or SHA-256 fingerprint for structured output).
+- Mark updates as `new` for 2 hours after detection.
+- Poll one source or all sources.
+- Send native system notifications on detected changes.
+- Run auto-polling on an interval (default: 30 minutes).
 
-## Example default sources
+## Default sources
 
 - `https://windsurf.com/changelog`
 - `https://developers.openai.com/codex/changelog/`
 - `https://xcodereleases.com/data.json`
 
-Both are editable or removable.
+All defaults can be edited or removed.
 
-## Install and run
+## Run locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Production run (local):
+Production-style local run:
 
 ```bash
 npm start
 ```
 
-## Developer workflow
+## Development commands
 
 ```bash
-# strict type-check only
+# Type-check both main and renderer
 npm run typecheck
 
-# lint with strict TS-aware rules
+# Lint with strict TypeScript rules
 npm run lint
 
-# auto-fix lint issues
+# Lint and auto-fix
 npm run lint:fix
 
-# format
+# Format project files
 npm run format
 ```
 
-Watch mode (auto-recompile + restart Electron on changes):
+Watch mode (rebuild + restart Electron on file changes):
 
 ```bash
 npm run dev:watch
 ```
 
-## Build for macOS (`/Applications`)
+## Build for macOS
 
 ```bash
 npm install
 npm run dist:mac
 ```
 
-Build output goes to:
+Artifacts are generated in `release/` (DMG + ZIP).
 
-- `release/Release Watcher-0.1.0-*.dmg`
-- `release/Release Watcher-0.1.0-*.zip`
+To install:
 
-Then:
-
-1. Open the `.dmg`.
-2. Drag `Release Watcher.app` into `/Applications`.
+1. Open the generated `.dmg`.
+2. Drag `Release Watcher.app` to `/Applications`.
 3. Launch from Applications.
 
-## Data storage
+## Data location
 
-The app stores data in a shared YAML file so dev/prod builds use the same config.
+The app uses a shared config location so dev and production builds read the same data.
 
-On macOS:
+- macOS: `~/Library/Application Support/pl.alorenc.releasewatcher/config.yaml`
+- other platforms: `<appData>/pl.alorenc.releasewatcher/config.yaml`
 
-- `~/Library/Application Support/pl.alorenc.releasewatcher/config.yaml`
-
-On other platforms:
-
-- `<appData>/pl.alorenc.releasewatcher/config.yaml`
-
-The file keeps:
+Stored data includes:
 
 - source definitions
-- latest detected values
-- timestamps (`lastPolledAt`, `lastChangeAt`)
-- poll status and errors
+- latest values and fingerprints
+- timestamps (`lastPolledAt`, `lastChangeAt`, `newVersionAt`)
+- poll status/errors
 - auto-poll settings
-- unseen update badge count
+- unseen update badge state
 
-Format note:
+Implementation note:
 
-- The file is stored as YAML-compatible content (JSON subset), so it remains portable between dev/prod and safe to parse even in minimal runtimes.
+- The file is written as YAML-compatible JSON content for portability.
 
-Migration:
+Migration note:
 
-- On first run with this version, existing `release-watcher-data.json` from Electron userData is imported automatically into `config.yaml`.
+- On first run, a legacy `release-watcher-data.json` from Electron `userData` is imported into `config.yaml` if present.
 
-## Notes
+## Behavior notes
 
-- First successful poll for a source is treated as baseline and does not trigger notification.
-- Regex supports plain patterns (`latest\\s+version\\s*([0-9.]+)`) or `/pattern/flags` style.
+- The first successful poll sets a baseline and does not trigger a "new version" notification.
+- Regex can be provided either as a plain pattern or `/pattern/flags`.
 
-## Codebase layout
+## Project structure
 
-- `src/main/`: Electron main process (window, tray, polling, IPC, persistence)
-- `src/preload/`: secure context bridge API
-- `src/renderer/`: browser UI (TypeScript modules + HTML/CSS)
-- `src/shared/`: shared TypeScript types
-- `dist/`: compiled output used at runtime/package time
+- `src/main/` Electron main process (window/tray/polling/IPC/storage)
+- `src/preload/` context bridge API
+- `src/renderer/` UI (TypeScript + HTML/CSS)
+- `src/shared/` shared types
+- `dist/` compiled output
