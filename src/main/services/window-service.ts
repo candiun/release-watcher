@@ -23,6 +23,14 @@ export class WindowService {
     return this.mainWindow;
   }
 
+  notifyStoreUpdated(): void {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return;
+    }
+
+    this.mainWindow.webContents.send('store:updated');
+  }
+
   isVisible(): boolean {
     return Boolean(
       this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.isVisible()

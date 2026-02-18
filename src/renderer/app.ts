@@ -13,13 +13,15 @@ export class RendererApp {
   private readonly elements: Elements;
   private readonly state: RendererState;
   private toastTimeoutId: number | null = null;
+  private refreshInFlight = false;
+  private refreshQueued = false;
 
   constructor() {
     this.elements = collectElements();
     this.state = {
       sources: [],
       settings: {
-        schemaVersion: 3,
+        schemaVersion: 4,
         autoPollEnabled: true,
         autoPollMinutes: 30,
         unseenUpdateCount: 0,
@@ -30,6 +32,11 @@ export class RendererApp {
 
   async init(): Promise<void> {
     this.bindEvents();
+    this.api.onStoreUpdated(() => {
+      this.refreshSourcesFromStoreEvent().catch((error) => {
+        console.error('Failed to refresh sources after store update:', error);
+      });
+    });
     await this.refreshAllData();
   }
 
@@ -153,6 +160,27 @@ export class RendererApp {
     this.elements.autoPollMinutes.value = String(this.state.settings.autoPollMinutes);
 
     this.renderSources();
+  }
+
+  private async refreshSourcesFromStoreEvent(): Promise<void> {
+    if (this.refreshInFlight) {
+      this.refreshQueued = true;
+      return;
+    }
+
+    this.refreshInFlight = true;
+
+    try {
+      this.state.sources = await this.api.listSources();
+      this.renderSources();
+    } finally {
+      this.refreshInFlight = false;
+    }
+
+    if (this.refreshQueued) {
+      this.refreshQueued = false;
+      await this.refreshSourcesFromStoreEvent();
+    }
   }
 
   private async saveSourceFromForm(): Promise<void> {

@@ -68,4 +68,5 @@ export interface ReleaseTrackerApi {
   pollAll: () => Promise<SourceView[]>;
   getSettings: () => Promise<AppSettings>;
   updateSettings: (settings: SettingsUpdate) => Promise<AppSettings>;
+  onStoreUpdated: (listener: () => void) => () => void;
 }

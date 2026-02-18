@@ -17,6 +17,14 @@ const api: ReleaseTrackerApi = {
     ipcRenderer.invoke('settings:update', settings) as ReturnType<
       ReleaseTrackerApi['updateSettings']
     >,
+  onStoreUpdated: (listener: () => void) => {
+    const handleStoreUpdated = () => listener();
+    ipcRenderer.on('store:updated', handleStoreUpdated);
+
+    return () => {
+      ipcRenderer.removeListener('store:updated', handleStoreUpdated);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld('releaseTrackerApi', api);

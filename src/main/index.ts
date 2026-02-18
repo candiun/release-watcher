@@ -31,6 +31,7 @@ function currentUnseenUpdateCount(): number {
 
 function onStoreMutated(): void {
   trayService.updateIndicator();
+  windowService.notifyStoreUpdated();
 }
 
 function markUnseenUpdate(): void {
