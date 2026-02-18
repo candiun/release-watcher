@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Release Watcher</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="backdrop"></div>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Release Watcher</h1>
+          <p>Track app versions from JSON and HTML sources.</p>
+        </div>
+        <div class="top-actions">
+          <button id="poll-all-btn" class="btn primary">Poll All</button>
+          <button id="new-source-btn" class="btn">New Source</button>
+        </div>
+      </header>
+
+      <section class="settings-panel">
+        <h2>Auto Poll Settings</h2>
+        <div class="settings-grid">
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="auto-poll-enabled" />
+            Enable automatic polling
+          </label>
+
+          <label>
+            Interval (minutes)
+            <input id="auto-poll-minutes" type="number" min="5" max="1440" step="1" />
+          </label>
+
+          <button id="save-settings-btn" class="btn">Save Settings</button>
+        </div>
+      </section>
+
+      <section>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Latest</th>
+                <th>Last Polled</th>
+                <th>New Version At</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sources-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="source-dialog">
+      <form method="dialog" id="source-form" class="source-form">
+        <h3 id="dialog-title">New Source</h3>
+
+        <label>
+          Name
+          <input type="text" id="source-name" required />
+        </label>
+
+        <label>
+          URL
+          <input type="url" id="source-url" required />
+        </label>
+
+        <label>
+          Type
+          <select id="source-type" required>
+            <option value="json">JSON</option>
+            <option value="html">HTML</option>
+          </select>
+        </label>
+
+        <label id="json-path-wrap">
+          JSON path (supports dots + [index])
+          <input type="text" id="source-json-path" placeholder="0.name" />
+        </label>
+
+        <label id="selector-wrap">
+          CSS selector
+          <input type="text" id="source-selector" placeholder="body" />
+        </label>
+
+        <label id="attribute-wrap">
+          Attribute (optional)
+          <input type="text" id="source-attribute" placeholder="href" />
+        </label>
+
+        <label>
+          Regex extract (optional)
+          <input type="text" id="source-regex" placeholder="latest\\s+version\\s*([0-9.]+)" />
+        </label>
+
+        <label>
+          Notes (optional)
+          <input type="text" id="source-notes" />
+        </label>
+
+        <menu>
+          <button type="button" id="cancel-source-btn" class="btn">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>
