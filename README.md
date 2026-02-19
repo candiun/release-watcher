@@ -1,6 +1,6 @@
 # Release Watcher
 
-Release Watcher is a small Electron desktop app that tracks version changes across web sources.
+Release Watcher is a desktop app that tracks version changes across web sources and notifies you of new releases.
 
 It supports JSON APIs and HTML changelog pages, remembers what was seen last time, and shows notifications when something new appears.
 
@@ -18,21 +18,8 @@ It supports JSON APIs and HTML changelog pages, remembers what was seen last tim
   - JSON examples: `0.name`, `.data[].id`, `releases[0].version`
   - HTML: CSS selector + optional attribute
 - Optionally apply regex extraction after selector output.
-- Send custom request headers per source (useful for authenticated APIs).
-- Store latest known values locally.
-- Detect changes with value comparison (or SHA-256 fingerprint for structured output).
-- Mark updates as `new` for 2 hours after detection.
-- Poll one source or all sources.
+- Send custom request headers per source (useful for authenticated APIs)
 - Send native system notifications on detected changes.
-- Run auto-polling on an interval (default: 30 minutes).
-
-## Default sources
-
-- `https://windsurf.com/changelog`
-- `https://developers.openai.com/codex/changelog/`
-- `https://xcodereleases.com/data.json`
-
-All defaults can be edited or removed.
 
 ## Run locally
 
