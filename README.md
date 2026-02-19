@@ -6,9 +6,9 @@ It supports JSON APIs and HTML changelog pages, remembers what was seen last tim
 
 ## Screenshots
 
-![Release Watcher screenshot 1](media/photo1.png)
-
-![Release Watcher screenshot 2](media/photo2.png)
+| Screenshot 1 | Screenshot 2 |
+| --- | --- |
+| ![Release Watcher screenshot 1](media/photo1.png) | ![Release Watcher screenshot 2](media/photo2.png) |
 
 ## What it does
 
