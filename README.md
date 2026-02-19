@@ -4,6 +4,12 @@ Release Watcher is a small Electron desktop app that tracks version changes acro
 
 It supports JSON APIs and HTML changelog pages, remembers what was seen last time, and shows notifications when something new appears.
 
+## Screenshots
+
+![Release Watcher screenshot 1](media/photo1.png)
+
+![Release Watcher screenshot 2](media/photo2.png)
+
 ## What it does
 
 - Add, edit, and delete watched sources from the UI.
